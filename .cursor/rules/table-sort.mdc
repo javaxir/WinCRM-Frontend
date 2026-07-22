@@ -1,0 +1,50 @@
+---
+description: Table sorting pattern for list and detail views
+globs: src/views/**/*.vue
+alwaysApply: false
+---
+
+# Table sorting
+
+Every data table must support column sorting unless the column is non-data (checkbox, row actions, photo thumbnail).
+
+## List pages (`*List.vue`)
+
+1. Define columns with `TABLE_COLUMNS: TableColumnDef[]` — set `sortable: true` on sortable columns; `sortable: false` only for photo/icon columns.
+2. Use `useTableSort` from `@/composables/useTableControls`.
+3. Render headers with `SortableTh` from `@/components/common/SortableTh.vue`.
+4. Bind sort state: `:active="sortKey === 'field'"`, `:direction="sortKey === 'field' ? sortDir : null"`, `@sort="toggleSort('field')"`.
+5. Display sorted rows: `const displayItems = computed(() => applySort(filteredItems.value))`.
+
+```vue
+<SortableTh
+  label="Nomi"
+  sortable
+  :active="sortKey === 'name'"
+  :direction="sortKey === 'name' ? sortDir : null"
+  @sort="toggleSort('name')"
+/>
+```
+
+```ts
+const { sortKey, sortDir, toggleSort, applySort } = useTableSort<RowType>((row, key) => {
+  if (key === 'customField') return computeValue(row)
+  return row[key as keyof RowType]
+})
+const displayRows = computed(() => applySort(rows.value))
+```
+
+## Detail pages (tabs with tables)
+
+Use separate `useTableSort` instances per table (`actSortKey`, `paymentSortKey`, etc.) when a page has multiple tables.
+
+For computed/derived columns (paid, balance), implement custom `getValue` in the sort callback.
+
+## Non-sortable columns
+
+- Checkbox selection column: plain `<th>` with checkbox only.
+- Actions column: `<SortableTh :label="t('common.actions')" align="right" />` without `sortable`.
+
+## New tables
+
+When adding any new table, follow this pattern from the start — do not use plain `<th>` for data columns.
