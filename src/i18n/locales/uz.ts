@@ -1,6 +1,6 @@
 export default {
   app: {
-    name: 'WinCRM-web',
+    name: 'WinCRM-Frontend',
   },
   menu: {
     main: 'Menyu',

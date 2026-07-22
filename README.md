@@ -1,6 +1,6 @@
-# WinCRM-web
+# WinCRM-Frontend
 
-WinCRM Vue + Tailwind admin dashboard (web).
+WinCRM Vue + Tailwind admin dashboard (frontend).
 
 ## Development
 

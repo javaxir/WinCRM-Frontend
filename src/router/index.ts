@@ -271,7 +271,7 @@ export default router
 
 router.beforeEach((to, from, next) => {
   const titleKey = to.meta.titleKey as string | undefined
-  const pageTitle = titleKey ? i18n.global.t(titleKey) : 'WinCRM-web'
+  const pageTitle = titleKey ? i18n.global.t(titleKey) : 'WinCRM-Frontend'
   document.title = `${pageTitle} | ${i18n.global.t('app.name')}`
 
   const authed = isAuthenticated()
