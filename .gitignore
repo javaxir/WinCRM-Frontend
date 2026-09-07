@@ -37,3 +37,6 @@ dis.json
 login.json
 api-docs.json
 
+# Local UI test artifacts
+tmp-ui-test/
+

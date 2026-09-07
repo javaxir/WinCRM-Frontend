@@ -1,6 +1,5 @@
 <template>
   <div ref="rootRef" class="relative">
-    <label v-if="label" class="mb-1.5 block text-xs font-medium text-gray-500 dark:text-gray-400">{{ label }}</label>
     <button
       type="button"
       @click="toggleOpen"

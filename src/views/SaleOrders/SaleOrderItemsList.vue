@@ -419,13 +419,13 @@
           <SaleOrderExtras
             v-if="orderInfo"
             :order="orderInfo"
-            :attachments="orderInfo.attachments ?? []"
             :panel="extraPanel"
             @refresh="loadAll"
-            @update-attachments="onAttachmentsUpdate"
             @log-activity="onLogActivity"
             @add-payment="openPaymentForm"
             @payments-loaded="onPaymentsLoaded"
+            @images-loaded="onImagesLoaded"
+            @wastes-loaded="onWastesLoaded"
           />
         </div>
       </div>
@@ -797,7 +797,6 @@ import {
   calcWindowAreaM2,
   formatAreaM2,
   type SaleOrderMeta,
-  type SaleOrderAttachment,
   type SaleOrderActivityEntry,
 } from '@/utils/saleOrderMeta'
 
@@ -829,9 +828,11 @@ const goodsList = ref<GoodsResponse[]>([])
 const goodsById = ref(new Map<number, GoodsResponse>())
 const createTypeFilter = ref<GoodsType | null>(null)
 const activeItemTab = ref<GoodsType>('WINDOW')
-type MainOrderTab = 'positions' | 'info' | 'payments' | 'timeline' | 'files' | 'notify'
+type MainOrderTab = 'positions' | 'info' | 'payments' | 'timeline' | 'files' | 'waste' | 'notify'
 const activeMainTab = ref<MainOrderTab>('positions')
 const paymentsCount = ref(0)
+const imagesCount = ref(0)
+const wastesCount = ref(0)
 const positionSearch = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
@@ -1035,23 +1036,33 @@ const mainTabs = computed(() => [
   { id: 'info' as const, label: t('saleOrderItems.tabInfo'), count: null },
   { id: 'payments' as const, label: t('saleOrderItems.tabPayments'), count: paymentsCount.value },
   { id: 'timeline' as const, label: t('saleOrderItems.tabTimeline'), count: null },
-  { id: 'files' as const, label: t('saleOrderItems.tabFiles'), count: orderInfo.value?.attachments?.length ?? 0 },
+  { id: 'files' as const, label: t('saleOrderItems.tabFiles'), count: imagesCount.value },
+  { id: 'waste' as const, label: t('saleOrderItems.tabWaste'), count: wastesCount.value },
   { id: 'notify' as const, label: t('saleOrderItems.tabNotify'), count: null },
 ])
 
 const isExtraTab = computed(() =>
-  ['payments', 'timeline', 'files', 'notify'].includes(activeMainTab.value),
+  ['payments', 'timeline', 'files', 'waste', 'notify'].includes(activeMainTab.value),
 )
 
 const extraPanel = computed((): SaleOrderExtraPanel => {
   if (activeMainTab.value === 'payments') return 'payments'
   if (activeMainTab.value === 'timeline') return 'timeline'
   if (activeMainTab.value === 'files') return 'files'
+  if (activeMainTab.value === 'waste') return 'waste'
   return 'notify'
 })
 
 const onPaymentsLoaded = (count: number) => {
   paymentsCount.value = count
+}
+
+const onImagesLoaded = (count: number) => {
+  imagesCount.value = count
+}
+
+const onWastesLoaded = (count: number) => {
+  wastesCount.value = count
 }
 
 const paymentProgress = computed(() => {
@@ -1250,21 +1261,6 @@ const formatOrderDate = (v?: string) => {
 }
 
 const printOrder = () => window.print()
-
-const onAttachmentsUpdate = async (attachments: SaleOrderAttachment[]) => {
-  if (!orderInfo.value) return
-  const meta = { ...getOrderMeta(), attachments }
-  await saveOrderWithMeta({
-    warehouseId: orderInfo.value.warehouseId,
-    orderDate: orderInfo.value.orderDate,
-    clientId: orderInfo.value.clientId ?? undefined,
-    userId: orderInfo.value.userId ?? undefined,
-    totalSum: orderInfo.value.totalSum,
-    userComment: orderInfo.value.userComment ?? null,
-    meta,
-  })
-  await loadAll()
-}
 
 const onLogActivity = async (entry: Omit<SaleOrderActivityEntry, 'id'>) => {
   if (!orderInfo.value) return

@@ -80,6 +80,7 @@
                 <tr class="border-b border-gray-200 dark:border-gray-700">
                   <SortableTh v-if="isVisible('id')" label="ID" sortable :active="sortKey === 'id'" :direction="sortKey === 'id' ? sortDir : null" @sort="toggleSort('id')" />
                   <SortableTh v-if="isVisible('clientFullName')" label="Mijoz" sortable :active="sortKey === 'clientFullName'" :direction="sortKey === 'clientFullName' ? sortDir : null" @sort="toggleSort('clientFullName')" />
+                  <SortableTh v-if="isVisible('userFullName')" :label="t('payments.user')" sortable :active="sortKey === 'userFullName'" :direction="sortKey === 'userFullName' ? sortDir : null" @sort="toggleSort('userFullName')" />
                   <SortableTh v-if="isVisible('paymentTypeName')" label="To‘lov turi" sortable :active="sortKey === 'paymentTypeName'" :direction="sortKey === 'paymentTypeName' ? sortDir : null" @sort="toggleSort('paymentTypeName')" />
                   <SortableTh v-if="isVisible('paymentAmount')" label="Summa" sortable :active="sortKey === 'paymentAmount'" :direction="sortKey === 'paymentAmount' ? sortDir : null" @sort="toggleSort('paymentAmount')" />
                   <SortableTh v-if="isVisible('paymentDate')" label="To‘lov sanasi" sortable :active="sortKey === 'paymentDate'" :direction="sortKey === 'paymentDate' ? sortDir : null" @sort="toggleSort('paymentDate')" />
@@ -101,6 +102,12 @@
                       {{ payment.clientFullName || '—' }}
                     </router-link>
                     <span v-else class="text-gray-500 text-theme-sm">—</span>
+                  </td>
+                  <td v-if="isVisible('userFullName')" class="px-5 py-4 sm:px-6">
+                    <div class="min-w-0">
+                      <p class="text-gray-800 text-theme-sm dark:text-white/90">{{ payment.userFullName || '—' }}</p>
+                      <p v-if="payment.userId" class="mt-0.5 text-xs text-gray-500">ID: {{ payment.userId }}</p>
+                    </div>
                   </td>
                   <td v-if="isVisible('paymentTypeName')" class="px-5 py-4 sm:px-6"><span class="text-gray-800 text-theme-sm dark:text-white/90">{{ payment.paymentTypeName }}</span></td>
                   <td v-if="isVisible('paymentAmount')" class="px-5 py-4 sm:px-6"><span class="font-medium text-gray-800 text-theme-sm dark:text-white/90">{{ formatMoney(payment.paymentAmount) }}</span></td>
@@ -137,7 +144,7 @@
               <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Foydalanuvchi (sotuvchi)<span class="text-error-500">*</span></label>
               <select v-model.number="form.userId" required :class="inputClass">
                 <option :value="0" disabled>Tanlang</option>
-                <option v-for="u in users" :key="u.id" :value="u.id">{{ u.fullName }}</option>
+                <option v-for="u in users" :key="u.id" :value="u.id">#{{ u.id }} · {{ u.fullName }}</option>
               </select>
             </div>
             <div>
@@ -213,6 +220,7 @@ const { t } = useI18n()
 const TABLE_COLUMNS: TableColumnDef[] = [
   { key: 'id', label: 'ID', sortable: true },
   { key: 'clientFullName', label: 'Mijoz', sortable: true },
+  { key: 'userFullName', label: 'Foydalanuvchi', sortable: true },
   { key: 'paymentTypeName', label: 'To‘lov turi', sortable: true },
   { key: 'paymentAmount', label: 'Summa', sortable: true },
   { key: 'paymentDate', label: 'To‘lov sanasi', sortable: true },
@@ -240,8 +248,17 @@ const filterEnd = ref(monthRange.endDate)
 const appliedStart = ref(monthRange.startDate)
 const appliedEnd = ref(monthRange.endDate)
 
-const { visible, toggleColumn, isVisible } = useColumnVisibility(TABLE_COLUMNS, 'payments-cols')
-const { sortKey, sortDir, toggleSort, applySort } = useTableSort<PaymentResponse>((row, key) => row[key as keyof PaymentResponse])
+const usersById = computed(() => {
+  const map = new Map<number, UserResponse>()
+  for (const user of users.value) map.set(user.id, user)
+  return map
+})
+
+const { visible, toggleColumn, isVisible } = useColumnVisibility(TABLE_COLUMNS, 'payments-cols-v3')
+const { sortKey, sortDir, toggleSort, applySort } = useTableSort<PaymentResponse>((row, key) => {
+  if (key === 'userFullName') return row.userFullName || usersById.value.get(row.userId ?? 0)?.fullName || ''
+  return row[key as keyof PaymentResponse]
+})
 const colCount = computed(() => TABLE_COLUMNS.filter((c) => isVisible(c.key)).length)
 
 const filteredPayments = computed(() => {
@@ -400,14 +417,14 @@ const openEdit = async (payment: PaymentResponse) => {
   editing.value = payment
   form.value = {
     clientId: payment.clientId,
-    userId: 0,
+    userId: payment.userId || 0,
     paymentTypeId: payment.paymentTypeId,
     paymentAmount: payment.paymentAmount,
     paymentDateLocal: toLocalInput(payment.paymentDate),
     comment: payment.comment || '',
   }
   formError.value = ''
-  if (!clients.value.length) await loadRefs()
+  if (!clients.value.length || !users.value.length) await loadRefs()
   showFormModal.value = true
 }
 

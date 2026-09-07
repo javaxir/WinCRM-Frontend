@@ -19,13 +19,26 @@ export interface ClientBalanceDTO {
   totalPaid: number
 }
 
-export async function fetchAllClientBalances() {
-  const res = await http.get<ApiResponse<unknown>>('/api/client-balances')
+export async function fetchAllClientBalances(params?: { fromDate?: string; toDate?: string }) {
+  const search = new URLSearchParams()
+  if (params?.fromDate) search.set('fromDate', params.fromDate)
+  if (params?.toDate) search.set('toDate', params.toDate)
+  const query = search.toString()
+  const res = await http.get<ApiResponse<unknown>>(`/api/client-balances${query ? `?${query}` : ''}`)
   return unwrapListContent<ClientBalanceResponse>(res)
 }
 
-export async function fetchClientBalanceByClientId(clientId: number) {
-  const res = await http.get<ApiResponse<ClientBalanceResponse>>(`/api/client-balances/${clientId}`)
+export async function fetchClientBalanceByClientId(
+  clientId: number,
+  params?: { fromDate?: string; toDate?: string },
+) {
+  const search = new URLSearchParams()
+  if (params?.fromDate) search.set('fromDate', params.fromDate)
+  if (params?.toDate) search.set('toDate', params.toDate)
+  const query = search.toString()
+  const res = await http.get<ApiResponse<ClientBalanceResponse>>(
+    `/api/client-balances/${clientId}${query ? `?${query}` : ''}`,
+  )
   return unwrapData(res)
 }
 

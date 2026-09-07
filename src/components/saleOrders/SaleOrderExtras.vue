@@ -75,46 +75,243 @@
       </ol>
     </div>
 
-    <!-- Attachments -->
+    <!-- Images (sale-order-image-controller) -->
     <div v-else-if="panel === 'files'">
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('saleOrderItems.filesHint') }}</p>
-        <label :class="btnOutline + ' cursor-pointer'">
-          <input type="file" class="hidden" multiple @change="onFileSelect" />
-          <Plus class="h-4 w-4" />
-          {{ t('saleOrderItems.uploadFile') }}
-        </label>
+      <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div class="min-w-0 flex-1">
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('saleOrderItems.filesHint') }}</p>
+          <div class="mt-3 flex flex-wrap items-center gap-3">
+            <div class="min-w-[160px]">
+              <label class="mb-1.5 block text-xs font-medium text-gray-500">{{ t('saleOrderItems.imageType') }}</label>
+              <select v-model="uploadImageType" :class="inputClass">
+                <option value="OBJECT">{{ t('saleOrderItems.imageTypes.OBJECT') }}</option>
+                <option value="PROJECT">{{ t('saleOrderItems.imageTypes.PROJECT') }}</option>
+                <option value="OTHER">{{ t('saleOrderItems.imageTypes.OTHER') }}</option>
+              </select>
+            </div>
+            <label :class="btnPrimary + ' cursor-pointer'">
+              <input
+                type="file"
+                class="hidden"
+                accept="image/*"
+                multiple
+                :disabled="uploading"
+                @change="onFileSelect"
+              />
+              <Plus class="h-4 w-4" />
+              {{ uploading ? t('common.saving') : t('saleOrderItems.uploadFile') }}
+            </label>
+            <ActionIconButton action="refresh" @click="loadImages" />
+          </div>
+        </div>
       </div>
       <div v-if="fileError" class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
         {{ fileError }}
       </div>
-      <div v-if="uploading" class="mb-3 text-sm text-gray-500">{{ t('common.saving') }}</div>
-      <div v-if="attachments.length === 0" class="py-8 text-center text-sm text-gray-500">{{ t('saleOrderItems.noFiles') }}</div>
-      <ul v-else class="divide-y divide-gray-100 rounded-xl border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
-        <li
-          v-for="file in attachments"
-          :key="file.fileName"
-          class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+      <div v-if="imagesLoading" class="py-8 text-center text-sm text-gray-500">{{ t('common.loading') }}</div>
+      <div v-else-if="images.length === 0" class="py-8 text-center text-sm text-gray-500">{{ t('saleOrderItems.noFiles') }}</div>
+      <div v-else class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <article
+          v-for="image in images"
+          :key="image.id"
+          class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.02]"
         >
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90">{{ file.originalName }}</p>
-            <p class="text-xs text-gray-500">{{ formatDateTime(file.uploadedAt) }}</p>
+          <a
+            :href="resolveSaleOrderImageUrl(image)"
+            target="_blank"
+            rel="noopener"
+            class="block aspect-[4/3] bg-gray-50 dark:bg-gray-900"
+          >
+            <img
+              :src="resolveSaleOrderImageUrl(image)"
+              :alt="image.originalFileName || image.fileName"
+              class="h-full w-full object-cover"
+              loading="lazy"
+            />
+          </a>
+          <div class="space-y-2 p-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="inline-flex rounded-full bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 dark:bg-brand-500/15 dark:text-brand-400">
+                {{ imageTypeLabel(image.imageType) }}
+              </span>
+              <span v-if="image.size" class="text-xs text-gray-500">{{ formatBytes(image.size) }}</span>
+            </div>
+            <p class="truncate text-sm font-medium text-gray-800 dark:text-white/90">
+              {{ image.originalFileName || image.fileName }}
+            </p>
+            <p class="text-xs text-gray-500">{{ formatDateTime(image.createdAt) }}</p>
+            <div class="flex flex-wrap gap-2 pt-1">
+              <a
+                :href="resolveSaleOrderImageUrl(image)"
+                target="_blank"
+                rel="noopener"
+                :class="btnOutline + ' !py-2 !text-xs'"
+              >
+                {{ t('saleOrderItems.openFile') }}
+              </a>
+              <button
+                type="button"
+                :disabled="deletingImageId === image.id"
+                :class="btnOutline + ' !py-2 !text-xs text-red-600'"
+                @click="removeImage(image)"
+              >
+                {{ deletingImageId === image.id ? t('common.deleting') : t('common.delete') }}
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-2">
-            <a
-              :href="getFileUrl(file.fileName)"
-              target="_blank"
-              rel="noopener"
-              :class="btnOutline + ' !py-2 !text-xs'"
-            >
-              {{ t('saleOrderItems.openFile') }}
-            </a>
-            <button type="button" :class="btnOutline + ' !py-2 !text-xs text-red-600'" @click="removeAttachment(file.fileName)">
-              {{ t('common.delete') }}
-            </button>
+        </article>
+      </div>
+    </div>
+
+    <!-- Waste (sale-order-wastes) -->
+    <div v-else-if="panel === 'waste'">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ t('saleOrderWaste.orderHint') }}</p>
+          <p class="mt-1 text-xs text-gray-400">{{ t('saleOrderWaste.infoOnly') }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" :class="btnPrimary" @click="openWasteForm()">
+            <Plus class="h-4 w-4" />
+            {{ t('saleOrderWaste.add') }}
+          </button>
+          <ActionIconButton action="refresh" @click="loadWastes" />
+        </div>
+      </div>
+
+      <div v-if="wasteError" class="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+        {{ wasteError }}
+      </div>
+      <div v-if="wasteSuccess" class="mb-3 rounded-lg border border-success-200 bg-success-50 p-3 text-sm text-success-700 dark:border-success-500/30 dark:bg-success-500/10 dark:text-success-400">
+        {{ wasteSuccess }}
+      </div>
+
+      <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-white/5">
+          <p class="text-xs font-medium text-gray-500">{{ t('saleOrderWaste.totalQuantity') }}</p>
+          <p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{{ formatQty(wasteTotal) }}</p>
+        </div>
+        <div class="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-white/5">
+          <p class="text-xs font-medium text-gray-500">{{ t('saleOrderWaste.records') }}</p>
+          <p class="mt-1 text-lg font-semibold text-gray-800 dark:text-white/90">{{ wastes.length }}</p>
+        </div>
+      </div>
+
+      <div v-if="wasteSummary.length" class="mb-4 overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800">
+        <div class="border-b border-gray-100 px-4 py-2.5 text-xs font-medium uppercase tracking-wide text-gray-500 dark:border-gray-800">
+          {{ t('saleOrderWaste.byGoods') }}
+        </div>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+          <li
+            v-for="row in wasteSummary"
+            :key="row.goodsId"
+            class="flex items-center justify-between gap-3 px-4 py-2.5 text-sm"
+          >
+            <span class="text-gray-800 dark:text-white/90">{{ row.goodsName || `#${row.goodsId}` }}</span>
+            <span class="font-medium tabular-nums text-gray-600 dark:text-gray-300">{{ formatQty(row.totalQuantity) }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="max-w-full overflow-x-auto custom-scrollbar">
+        <table class="min-w-full">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-700">
+              <th class="px-5 py-3 text-left text-xs font-medium text-gray-500">ID</th>
+              <th class="px-5 py-3 text-left text-xs font-medium text-gray-500">{{ t('saleOrderWaste.goods') }}</th>
+              <th class="px-5 py-3 text-right text-xs font-medium text-gray-500">{{ t('saleOrderWaste.quantity') }}</th>
+              <th class="px-5 py-3 text-left text-xs font-medium text-gray-500">{{ t('saleOrderWaste.size') }}</th>
+              <th class="px-5 py-3 text-left text-xs font-medium text-gray-500">{{ t('saleOrderWaste.comment') }}</th>
+              <th class="px-5 py-3 text-left text-xs font-medium text-gray-500">{{ t('saleOrderWaste.createdAt') }}</th>
+              <th class="px-5 py-3 text-right text-xs font-medium text-gray-500">{{ t('common.actions') }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr v-if="wastesLoading">
+              <td colspan="7" class="px-5 py-8 text-center text-sm text-gray-500">{{ t('common.loading') }}</td>
+            </tr>
+            <tr v-else-if="wastes.length === 0">
+              <td colspan="7" class="px-5 py-8 text-center text-sm text-gray-500">{{ t('saleOrderWaste.empty') }}</td>
+            </tr>
+            <tr v-for="row in wastes" :key="row.id">
+              <td class="px-5 py-4 text-sm text-gray-500">#{{ row.id }}</td>
+              <td class="px-5 py-4 text-sm text-gray-800 dark:text-white/90">
+                {{ row.goodsName || `#${row.goodsId}` }}
+                <span v-if="row.unitName" class="ml-1 text-xs text-gray-400">({{ row.unitName }})</span>
+              </td>
+              <td class="px-5 py-4 text-right text-sm font-medium tabular-nums text-gray-800 dark:text-white/90">
+                {{ formatQty(row.quantity) }}
+              </td>
+              <td class="px-5 py-4 text-sm text-gray-500">{{ formatWasteSize(row) }}</td>
+              <td class="px-5 py-4 text-sm text-gray-500">{{ row.comment || '—' }}</td>
+              <td class="px-5 py-4 text-sm text-gray-500">{{ formatDateTime(row.createdAt) }}</td>
+              <td class="px-5 py-4">
+                <div class="flex items-center justify-end gap-2">
+                  <ActionIconButton action="edit" size="sm" @click="openWasteForm(row)" />
+                  <ActionIconButton
+                    action="delete"
+                    size="sm"
+                    :disabled="deletingWasteId === row.id"
+                    @click="removeWaste(row)"
+                  />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <Modal v-if="showWasteModal" @close="showWasteModal = false">
+        <template #body>
+          <div class="relative w-full max-w-lg rounded-3xl bg-white p-6 dark:bg-gray-900">
+            <h4 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white/90">
+              {{ editingWasteId ? t('saleOrderWaste.edit') : t('saleOrderWaste.add') }}
+            </h4>
+            <div v-if="wasteFormError" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:text-red-400">
+              {{ wasteFormError }}
+            </div>
+            <form class="space-y-4" @submit.prevent="submitWaste">
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  {{ t('saleOrderWaste.goods') }}<span class="text-error-500">*</span>
+                </label>
+                <select v-model.number="wasteForm.goodsId" required :class="inputClass">
+                  <option :value="0" disabled>{{ t('saleOrderWaste.selectGoods') }}</option>
+                  <option v-for="g in goodsOptions" :key="g.id" :value="g.id">
+                    {{ g.name }} <template v-if="g.unitTypeName">({{ g.unitTypeName }})</template>
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                  {{ t('saleOrderWaste.quantity') }}<span class="text-error-500">*</span>
+                </label>
+                <input v-model.number="wasteForm.quantity" type="number" min="0.001" step="any" required :class="inputClass" />
+              </div>
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">{{ t('saleOrderWaste.width') }}</label>
+                  <input v-model.number="wasteForm.width" type="number" min="0" step="any" :class="inputClass" />
+                </div>
+                <div>
+                  <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">{{ t('saleOrderWaste.height') }}</label>
+                  <input v-model.number="wasteForm.height" type="number" min="0" step="any" :class="inputClass" />
+                </div>
+              </div>
+              <div>
+                <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">{{ t('saleOrderWaste.comment') }}</label>
+                <textarea v-model="wasteForm.comment" rows="2" :class="inputClass" />
+              </div>
+              <div class="flex justify-end gap-3 pt-2">
+                <button type="button" :class="btnOutline" @click="showWasteModal = false">{{ t('common.cancel') }}</button>
+                <button type="submit" :disabled="savingWaste" :class="btnPrimary">
+                  {{ savingWaste ? t('common.saving') : t('common.save') }}
+                </button>
+              </div>
+            </form>
           </div>
-        </li>
-      </ul>
+        </template>
+      </Modal>
     </div>
 
     <!-- Notifications -->
@@ -280,6 +477,7 @@ import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { Plus, CreditCard, MessageSquare, Send } from 'lucide-vue-next'
 import ActionIconButton from '@/components/common/ActionIconButton.vue'
+import Modal from '@/components/ui/Modal.vue'
 import { fetchPaymentsBySaleOrder, type PaymentResponse } from '@/services/payments'
 import {
   sendDebtSmsForOrder,
@@ -291,9 +489,27 @@ import {
   type TelegramNotificationHistoryResponse,
 } from '@/services/notifications'
 import { fetchTelegramBotSettings, type TelegramBotSettingsResponse } from '@/services/telegramBotSettings'
-import { getFileUrl, uploadFile } from '@/services/files'
+import {
+  fetchSaleOrderImages,
+  uploadSaleOrderImages,
+  deleteSaleOrderImage,
+  resolveSaleOrderImageUrl,
+  type SaleOrderImageResponse,
+  type SaleOrderImageType,
+} from '@/services/saleOrderImages'
+import {
+  fetchSaleOrderWastesByOrder,
+  fetchSaleOrderWasteTotal,
+  fetchSaleOrderWasteSummaryByOrder,
+  createSaleOrderWaste,
+  updateSaleOrderWaste,
+  deleteSaleOrderWaste,
+  type SaleOrderWasteResponse,
+  type SaleOrderWasteSummaryResponse,
+} from '@/services/saleOrderWastes'
+import { fetchAllGoods, type GoodsResponse } from '@/services/goods'
 import type { SaleOrderResponse } from '@/services/saleOrders'
-import type { SaleOrderAttachment, SaleOrderActivityEntry } from '@/utils/saleOrderMeta'
+import type { SaleOrderActivityEntry } from '@/utils/saleOrderMeta'
 import {
   normalizeSmsStatus,
   isSmsStatusSuccess,
@@ -307,20 +523,20 @@ import {
   TELEGRAM_STATUS_I18N_KEY,
 } from '@/utils/telegramNotificationStatus'
 
-export type SaleOrderExtraPanel = 'payments' | 'timeline' | 'files' | 'notify'
+export type SaleOrderExtraPanel = 'payments' | 'timeline' | 'files' | 'waste' | 'notify'
 
 const props = defineProps<{
   order: SaleOrderResponse
-  attachments: SaleOrderAttachment[]
   panel: SaleOrderExtraPanel
 }>()
 
 const emit = defineEmits<{
   refresh: []
-  'update-attachments': [SaleOrderAttachment[]]
   'log-activity': [Omit<SaleOrderActivityEntry, 'id'>]
   'add-payment': []
   'payments-loaded': [number]
+  'images-loaded': [number]
+  'wastes-loaded': [number]
 }>()
 
 const { t } = useI18n()
@@ -332,8 +548,32 @@ const btnSuccess = 'inline-flex items-center gap-2 rounded-lg bg-success-600 px-
 
 const orderPayments = ref<PaymentResponse[]>([])
 const paymentsLoading = ref(false)
+const images = ref<SaleOrderImageResponse[]>([])
+const imagesLoading = ref(false)
+const uploadImageType = ref<SaleOrderImageType>('OBJECT')
+const deletingImageId = ref<number | null>(null)
 const fileError = ref('')
 const uploading = ref(false)
+
+const wastes = ref<SaleOrderWasteResponse[]>([])
+const wasteSummary = ref<SaleOrderWasteSummaryResponse[]>([])
+const wasteTotal = ref(0)
+const wastesLoading = ref(false)
+const wasteError = ref('')
+const wasteSuccess = ref('')
+const wasteFormError = ref('')
+const showWasteModal = ref(false)
+const savingWaste = ref(false)
+const editingWasteId = ref<number | null>(null)
+const deletingWasteId = ref<number | null>(null)
+const goodsOptions = ref<GoodsResponse[]>([])
+const wasteForm = ref({
+  goodsId: 0,
+  quantity: 0,
+  width: null as number | null,
+  height: null as number | null,
+  comment: '',
+})
 const notifySending = ref<'sms-order' | 'sms-client' | 'telegram' | null>(null)
 const notifyError = ref('')
 const notifySuccess = ref('')
@@ -407,6 +647,20 @@ const formatDateTime = (v?: string) => {
   if (!v) return '—'
   const d = new Date(v)
   return isNaN(d.getTime()) ? v : d.toLocaleString('uz-UZ')
+}
+const formatBytes = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+const formatQty = (v: number) => new Intl.NumberFormat('uz-UZ', { maximumFractionDigits: 3 }).format(v || 0)
+const formatWasteSize = (row: SaleOrderWasteResponse) => {
+  if (row.width == null && row.height == null) return '—'
+  return `${row.width ?? '—'} × ${row.height ?? '—'}`
+}
+const imageTypeLabel = (type: SaleOrderImageType | null | undefined) => {
+  if (!type) return t('saleOrderItems.imageTypes.OTHER')
+  return t(`saleOrderItems.imageTypes.${type}`)
 }
 
 const timelineEntries = computed(() => {
@@ -586,6 +840,23 @@ const sendTelegramMessage = async () => {
   }
 }
 
+const loadImages = async () => {
+  imagesLoading.value = true
+  fileError.value = ''
+  try {
+    images.value = (await fetchSaleOrderImages(props.order.id)).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    emit('images-loaded', images.value.length)
+  } catch (e) {
+    images.value = []
+    emit('images-loaded', 0)
+    fileError.value = e instanceof Error ? e.message : t('common.error')
+  } finally {
+    imagesLoading.value = false
+  }
+}
+
 const onFileSelect = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const files = input.files
@@ -593,22 +864,14 @@ const onFileSelect = async (event: Event) => {
   fileError.value = ''
   uploading.value = true
   try {
-    const next = [...props.attachments]
-    for (const file of Array.from(files)) {
-      const fileName = await uploadFile(file)
-      next.push({
-        fileName,
-        originalName: file.name,
-        uploadedAt: new Date().toISOString(),
-      })
-    }
-    emit('update-attachments', next)
+    await uploadSaleOrderImages(props.order.id, Array.from(files), uploadImageType.value)
     emit('log-activity', {
       type: 'file',
       message: t('saleOrderItems.activityFileUploaded', { count: files.length }),
       at: new Date().toISOString(),
       by: null,
     })
+    await loadImages()
   } catch (e) {
     fileError.value = e instanceof Error ? e.message : t('saleOrderItems.uploadFailed')
   } finally {
@@ -617,17 +880,155 @@ const onFileSelect = async (event: Event) => {
   }
 }
 
-const removeAttachment = (fileName: string) => {
-  emit(
-    'update-attachments',
-    props.attachments.filter((file) => file.fileName !== fileName),
-  )
+const removeImage = async (image: SaleOrderImageResponse) => {
+  deletingImageId.value = image.id
+  fileError.value = ''
+  try {
+    await deleteSaleOrderImage(props.order.id, image.id)
+    emit('log-activity', {
+      type: 'file',
+      message: t('saleOrderItems.activityFileDeleted', {
+        name: image.originalFileName || image.fileName,
+      }),
+      at: new Date().toISOString(),
+      by: null,
+    })
+    await loadImages()
+  } catch (e) {
+    fileError.value = e instanceof Error ? e.message : t('common.error')
+  } finally {
+    deletingImageId.value = null
+  }
+}
+
+const ensureGoodsLoaded = async () => {
+  if (goodsOptions.value.length) return
+  try {
+    const rows = await fetchAllGoods()
+    goodsOptions.value = rows.filter((g) => g.status === 'ACTIVE')
+  } catch {
+    goodsOptions.value = []
+  }
+}
+
+const loadWastes = async () => {
+  wastesLoading.value = true
+  wasteError.value = ''
+  try {
+    const [rows, total, summary] = await Promise.all([
+      fetchSaleOrderWastesByOrder(props.order.id),
+      fetchSaleOrderWasteTotal(props.order.id),
+      fetchSaleOrderWasteSummaryByOrder(props.order.id),
+    ])
+    wastes.value = rows.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    wasteTotal.value = total
+    wasteSummary.value = summary
+    emit('wastes-loaded', wastes.value.length)
+  } catch (e) {
+    wastes.value = []
+    wasteTotal.value = 0
+    wasteSummary.value = []
+    emit('wastes-loaded', 0)
+    wasteError.value = e instanceof Error ? e.message : t('common.error')
+  } finally {
+    wastesLoading.value = false
+  }
+}
+
+const openWasteForm = async (row?: SaleOrderWasteResponse) => {
+  await ensureGoodsLoaded()
+  wasteFormError.value = ''
+  wasteSuccess.value = ''
+  if (row) {
+    editingWasteId.value = row.id
+    wasteForm.value = {
+      goodsId: row.goodsId,
+      quantity: row.quantity,
+      width: row.width,
+      height: row.height,
+      comment: row.comment || '',
+    }
+  } else {
+    editingWasteId.value = null
+    wasteForm.value = {
+      goodsId: 0,
+      quantity: 0,
+      width: null,
+      height: null,
+      comment: '',
+    }
+  }
+  showWasteModal.value = true
+}
+
+const submitWaste = async () => {
+  wasteFormError.value = ''
+  if (!wasteForm.value.goodsId || !wasteForm.value.quantity || wasteForm.value.quantity <= 0) {
+    wasteFormError.value = t('saleOrderWaste.required')
+    return
+  }
+  savingWaste.value = true
+  try {
+    const payload = {
+      saleOrderId: props.order.id,
+      goodsId: Number(wasteForm.value.goodsId),
+      quantity: Number(wasteForm.value.quantity),
+      width: wasteForm.value.width != null && wasteForm.value.width > 0 ? Number(wasteForm.value.width) : undefined,
+      height: wasteForm.value.height != null && wasteForm.value.height > 0 ? Number(wasteForm.value.height) : undefined,
+      comment: wasteForm.value.comment.trim() || undefined,
+    }
+    if (editingWasteId.value) {
+      await updateSaleOrderWaste(editingWasteId.value, payload)
+      wasteSuccess.value = t('saleOrderWaste.updated')
+    } else {
+      await createSaleOrderWaste(payload)
+      wasteSuccess.value = t('saleOrderWaste.created')
+    }
+    showWasteModal.value = false
+    emit('log-activity', {
+      type: 'updated',
+      message: editingWasteId.value
+        ? t('saleOrderWaste.activityUpdated')
+        : t('saleOrderWaste.activityCreated'),
+      at: new Date().toISOString(),
+      by: null,
+    })
+    await loadWastes()
+  } catch (e) {
+    wasteFormError.value = e instanceof Error ? e.message : t('common.error')
+  } finally {
+    savingWaste.value = false
+  }
+}
+
+const removeWaste = async (row: SaleOrderWasteResponse) => {
+  deletingWasteId.value = row.id
+  wasteError.value = ''
+  try {
+    await deleteSaleOrderWaste(row.id)
+    wasteSuccess.value = t('saleOrderWaste.deleted')
+    emit('log-activity', {
+      type: 'updated',
+      message: t('saleOrderWaste.activityDeleted', { name: row.goodsName || `#${row.goodsId}` }),
+      at: new Date().toISOString(),
+      by: null,
+    })
+    await loadWastes()
+  } catch (e) {
+    wasteError.value = e instanceof Error ? e.message : t('common.error')
+  } finally {
+    deletingWasteId.value = null
+  }
 }
 
 watch(
   () => props.order.id,
   () => {
     loadPayments()
+    loadImages()
+    loadWastes()
   },
   { immediate: true },
 )
@@ -635,6 +1036,8 @@ watch(
 watch(
   () => [props.panel, props.order.id] as const,
   ([panel]) => {
+    if (panel === 'files') loadImages()
+    if (panel === 'waste') loadWastes()
     if (panel !== 'notify') return
     loadBotSettings()
     loadNotifyHistory()

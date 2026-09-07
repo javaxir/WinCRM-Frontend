@@ -282,6 +282,7 @@ const menuGroups = computed(() => [
           { name: t("menu.salesDashboard"), path: "/sales/dashboard", icon: LayoutDashboardIcon },
           { name: t("menu.saleOrders"), path: "/sale-orders", icon: ListIcon },
           { name: t("menu.saleOrderItemsFilter"), path: "/sale-order-items-filter", icon: FilterIcon },
+          { name: t("menu.saleOrderWastes"), path: "/sale-order-wastes", icon: DocsIcon },
         ],
       },
       {
@@ -289,6 +290,7 @@ const menuGroups = computed(() => [
         icon: BarChartIcon,
         subItems: [
           { name: t("menu.payments"), path: "/payments", icon: BarChartIcon },
+          { name: t("menu.salary"), path: "/salary", icon: UserCircleIcon },
           { name: t("menu.expenses"), path: "/expenses", icon: DocsIcon },
         ],
       },
@@ -322,7 +324,10 @@ const menuGroups = computed(() => [
       {
         icon: BoxCubeIcon,
         name: t("menu.suppliers"),
-        path: "/suppliers",
+        subItems: [
+          { name: t("menu.suppliersList"), path: "/suppliers", icon: ListIcon },
+          { name: t("menu.supplierBalances"), path: "/supplier-balances", icon: PieChartIcon },
+        ],
       },
       {
         name: t("menu.sms"),
@@ -345,6 +350,7 @@ const menuGroups = computed(() => [
         subItems: [
           { name: t("menu.settingsGeneral"), path: "/settings", icon: SettingsIcon },
           { name: t("menu.users"), path: "/users", icon: UserCircleIcon },
+          { name: t("menu.sessions"), path: "/sessions", icon: PlugInIcon },
           { name: t("menu.roles"), path: "/roles", icon: ShieldIcon },
           { name: t("menu.companyDetails"), path: "/company-details", icon: PageIcon },
           { name: t("menu.telegramBot"), path: "/settings/telegram-bot", icon: PlugInIcon },

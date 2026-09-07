@@ -152,14 +152,22 @@ import ActionIconButton from '@/components/common/ActionIconButton.vue'
 import DateRangePicker from '@/components/common/DateRangePicker.vue'
 import { useTableSort } from '@/composables/useTableControls'
 import {
-  fetchDebtors,
   sendDebtSmsToClient,
   sendDebtSmsToClients,
   sendDebtSmsForOrder,
   type DebtorClientResponse,
+  type DebtOrderInfo,
 } from '@/services/notifications'
+import { fetchAllClientBalances } from '@/services/clientBalances'
+import { fetchAllClients } from '@/services/clients'
+import {
+  fetchAllSaleOrders,
+  fetchSaleOrdersByDateRange,
+  type SaleOrderResponse,
+} from '@/services/saleOrders'
 import { fetchAllUsers } from '@/services/users'
 import type { UserResponse } from '@/services/users'
+import { toEndDateTime, toStartDateTime } from '@/utils/dateRange'
 
 const { t } = useI18n()
 
@@ -216,11 +224,68 @@ const toggleExpand = (id: number) => {
   expandedId.value = expandedId.value === id ? null : id
 }
 
-const buildFilter = () => ({
-  startDate: appliedStartDate.value || undefined,
-  endDate: appliedEndDate.value || undefined,
-  userId: appliedUserId.value > 0 ? appliedUserId.value : undefined,
-})
+const toDebtOrder = (order: SaleOrderResponse): DebtOrderInfo | null => {
+  if (!order.clientId || order.debtSum <= 0 || order.status !== 'ACTIVE') return null
+  return {
+    saleOrderId: order.id,
+    debtSum: order.debtSum,
+    orderDate: order.orderDate,
+    userId: order.userId,
+    userFullName: order.userFullName,
+  }
+}
+
+const loadSaleOrders = async () => {
+  if (appliedStartDate.value && appliedEndDate.value) {
+    return fetchSaleOrdersByDateRange(
+      toStartDateTime(appliedStartDate.value),
+      toEndDateTime(appliedEndDate.value),
+    )
+  }
+  return fetchAllSaleOrders()
+}
+
+const loadDebtorsFromBalances = async (): Promise<DebtorClientResponse[]> => {
+  const [balances, clients, orders] = await Promise.all([
+    fetchAllClientBalances({
+      fromDate: appliedStartDate.value || undefined,
+      toDate: appliedEndDate.value || undefined,
+    }),
+    fetchAllClients(),
+    loadSaleOrders().catch(() => [] as SaleOrderResponse[]),
+  ])
+
+  const clientById = new Map(clients.map((c) => [c.id, c]))
+  const ordersByClient = new Map<number, DebtOrderInfo[]>()
+
+  for (const order of orders) {
+    if (appliedUserId.value > 0 && order.userId !== appliedUserId.value) continue
+    const info = toDebtOrder(order)
+    if (!info || !order.clientId) continue
+    const list = ordersByClient.get(order.clientId) ?? []
+    list.push(info)
+    ordersByClient.set(order.clientId, list)
+  }
+
+  let rows: DebtorClientResponse[] = balances
+    .filter((b) => Number(b.totalDebt) > 0)
+    .map((b) => {
+      const client = clientById.get(b.clientId)
+      return {
+        clientId: b.clientId,
+        clientFullName: b.clientFullName || client?.fullName || '—',
+        phone: client?.phone || '',
+        totalDebt: Number(b.totalDebt) || 0,
+        orders: ordersByClient.get(b.clientId) ?? [],
+      }
+    })
+
+  if (appliedUserId.value > 0) {
+    rows = rows.filter((row) => row.orders.length > 0)
+  }
+
+  return rows.sort((a, b) => b.totalDebt - a.totalDebt)
+}
 
 const loadAll = async () => {
   loading.value = true
@@ -230,7 +295,7 @@ const loadAll = async () => {
     if (!users.value.length) {
       users.value = (await fetchAllUsers()).filter((u) => u.status === 'ACTIVE')
     }
-    debtors.value = await fetchDebtors(buildFilter())
+    debtors.value = await loadDebtorsFromBalances()
     selectedIds.value = selectedIds.value.filter((id) => debtors.value.some((d) => d.clientId === id))
   } catch (e) {
     errorMessage.value = e instanceof Error ? e.message : t('common.error')

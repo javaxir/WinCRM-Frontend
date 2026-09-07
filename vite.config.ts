@@ -16,8 +16,9 @@ export default defineConfig({
     host: true,
     proxy: {
       '/api': {
-        target: 'http://192.168.1.50:8081',
+        target: 'https://test.urspi.uz',
         changeOrigin: true,
+        secure: true,
       },
     },
   },
@@ -26,8 +27,9 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://192.168.1.50:8081',
+        target: 'https://test.urspi.uz',
         changeOrigin: true,
+        secure: true,
       },
     },
   },

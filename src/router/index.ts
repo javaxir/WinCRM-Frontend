@@ -69,6 +69,12 @@ const router = createRouter({
       meta: { titleKey: 'routes.suppliers' },
     },
     {
+      path: '/supplier-balances',
+      name: 'Supplier Balances',
+      component: () => import('../views/Suppliers/SupplierBalancesList.vue'),
+      meta: { titleKey: 'routes.supplierBalances' },
+    },
+    {
       path: '/suppliers/:id',
       name: 'Supplier Detail',
       component: () => import('../views/Suppliers/SupplierDetail.vue'),
@@ -183,6 +189,12 @@ const router = createRouter({
       meta: { titleKey: 'routes.saleOrderItemsFilter' },
     },
     {
+      path: '/sale-order-wastes',
+      name: 'Sale Order Wastes',
+      component: () => import('../views/SaleOrders/SaleOrderWastesList.vue'),
+      meta: { titleKey: 'routes.saleOrderWastes' },
+    },
+    {
       path: '/payment-types',
       name: 'Payment Types',
       component: () => import('../views/PaymentTypes/PaymentTypesList.vue'),
@@ -237,10 +249,22 @@ const router = createRouter({
       meta: { titleKey: 'routes.userReportDetail' },
     },
     {
+      path: '/salary',
+      name: 'Salary',
+      component: () => import('../views/Salary/SalaryPage.vue'),
+      meta: { titleKey: 'routes.salary' },
+    },
+    {
       path: '/audit-logs',
       name: 'Audit Logs',
       component: () => import('../views/Audit/AuditLogsList.vue'),
       meta: { titleKey: 'routes.auditLogs' },
+    },
+    {
+      path: '/sessions',
+      name: 'Active Sessions',
+      component: () => import('../views/Sessions/SessionsList.vue'),
+      meta: { titleKey: 'routes.sessions' },
     },
     {
       path: '/settings',

@@ -139,8 +139,8 @@
               </div>
             </div>
             <div>
-              <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Jami summa</label>
-              <input v-model.number="form.totalSum" type="number" min="0" step="1" :class="inputClass" />
+              <label class="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">Jami summa<span class="text-error-500">*</span></label>
+              <input v-model.number="form.totalSum" type="number" min="0" step="1" required :class="inputClass" />
             </div>
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -483,7 +483,7 @@ const openCreate = async () => {
     plannedReadyDate: '',
     plannedDeliveryDate: '',
     comment: '',
-    totalSum: undefined,
+    totalSum: 0,
     discountType: '',
     discountValue: 0,
   }
@@ -529,7 +529,7 @@ const submitForm = async () => {
       comment: form.value.comment.trim() || undefined,
       clientId: form.value.clientId > 0 ? form.value.clientId : undefined,
       userId: form.value.userId > 0 ? form.value.userId : undefined,
-      totalSum: form.value.totalSum,
+      totalSum: Number(form.value.totalSum ?? 0),
       ...(form.value.discountType && form.value.discountValue > 0
         ? {
             discountType: form.value.discountType,

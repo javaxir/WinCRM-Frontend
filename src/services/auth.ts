@@ -1,5 +1,5 @@
 // Bo'sh qoldiramiz: barcha /api so'rovlari Vite dev proxy orqali
-// http://192.168.1.50:8081 ga uzatiladi (vite.config.ts dagi server.proxy).
+// https://test.urspi.uz ga uzatiladi (vite.config.ts dagi server.proxy).
 // Bu CORS muammosini bartaraf qiladi.
 import i18n from '@/i18n'
 
